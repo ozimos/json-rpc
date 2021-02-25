@@ -4,8 +4,9 @@
    [clojure.tools.logging :as log]
    [json-rpc.client :as client]
    [json-rpc.http :as http]
-   [json-rpc.json :as json]
+   [jsonista.core :as json]
    [json-rpc.unix :as unix]
+   [nano-id.core :refer [nano-id]]
    [json-rpc.url :as url]
    [json-rpc.ws :as ws]))
 
@@ -13,27 +14,17 @@
   "The JSON-RPC protocol version."
   "2.0")
 
-(defn uuid
-  []
-  (.toString (java.util.UUID/randomUUID)))
-
 (defn encode
   "Encodes JSON-RPC method and params as a valid JSON-RPC request."
-  ([method params id]
-   (let [request {:jsonrpc *version*
-                  :method  method
-                  :params  params
-                  :id      id}
-         encoded (json/write-str json/data-json request)]
-     (log/debugf "map => %s, json => %s" request encoded)
-     encoded))
-  ([method params]
-   (encode method params (uuid))))
+  [request]
+  (let [encoded (json/write-value-as-string request)]
+    (log/debugf "map => %s, json => %s" request encoded)
+    encoded))
 
 (defn decode
   "Decodes result or error from JSON-RPC response"
   [json]
-  (let [body (json/read-str json/data-json json)]
+  (let [body (json/read-value json)]
     (log/debugf "json => %s, map => %s" json body)
     (select-keys body [:result :error :id])))
 
@@ -56,7 +47,7 @@
 
 (defrecord Channel [send-fn close-fn]
   java.io.Closeable
-  (close [this]
+  (close [_]
     (close-fn)))
 
 (defn open
@@ -69,18 +60,17 @@
                    :close-fn #(client/close client channel)})))
 
 (defn send
-  ([channel method params] (send channel method params {}))
-  ([{send-fn :send-fn} method params {id :id}]
-   (let [id       (or id (uuid))
-         request  (encode method params id)
-         response (send-fn request)
-         decoded  (decode response)]
-     (log/debugf "request => %s, response => %s" request response)
-     (if (= id (:id decoded))
-       decoded
-       (throw (ex-info "Response ID is different from request ID!"
-                       {:request  request
-                        :response response}))))))
+  [{send-fn :send-fn} {id :id :as data}]
+  (let [id       (if id id (nano-id 10))
+        request (encode (if id (assoc  data :jsonrpc *version*) (assoc data :id id :jsonrpc *version*)))
+        response (send-fn request)
+        decoded  (decode response)]
+    (log/debugf "request => %s, response => %s" request response)
+    (if (= id (:id decoded))
+      decoded
+      (throw (ex-info "Response ID is different from request ID!"
+                      {:request  request
+                       :response response})))))
 
 (defn close
   [{close-fn :close-fn}]

@@ -1,1 +1,1 @@
-cmd-clojure -A:test -m kaocha.runner "%*"
+cmd-clojure -M:test -m kaocha.runner "%*"

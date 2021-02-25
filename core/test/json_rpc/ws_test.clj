@@ -1,6 +1,6 @@
 (ns json-rpc.ws-test
   (:require
-   [clojure.data.json :as json]
+   [jsonista.core :as json]
    [clojure.test :refer [deftest is testing]]
    [json-rpc.client :as client]
    [json-rpc.ws :refer [gniazdo]]))
@@ -14,8 +14,8 @@
                           :method  "eth_blockNumber"
                           :params  ["latest"]
                           :id      1}
-                response (json/read-str (->> request
-                                             (json/write-str)
+                response (json/read-value (->> request
+                                             (json/write-value-as-string)
                                              (client/send gniazdo channel))
                                         :key-fn keyword)]
             (is (= request response)))

@@ -1,8 +1,7 @@
 (ns json-rpc.core-test
   (:refer-clojure :exclude [send])
   (:require
-   [clojure.data.json :as json]
-   [clojure.string :as str]
+   [jsonista.core :as json]
    [clojure.test :refer [deftest is testing]]
    [json-rpc.client :as client]
    [json-rpc.core :refer [*version* close decode encode send open route uuid]]
@@ -13,44 +12,15 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
-(def uuid-regex
-  #"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
-
-(deftest uuid-test
-  (testing "UUID is valid"
-    (let [uuid (str/lower-case (uuid))]
-      (is (re-matches uuid-regex uuid)))))
-
-(deftest encode-test
-  (testing "with ID"
-    (let [method "eth_blockNumber"
-          params ["latest"]
-          id     1]
-      (is (= (json/read-str (encode method params id)
-                            :key-fn keyword)
-             {:jsonrpc *version*
-              :method  method
-              :params  params
-              :id      id}))))
-  (testing "without ID"
-    (let [method "eth_blockNumber"
-          params ["latest"]]
-      (is (= (dissoc (json/read-str (encode method params)
-                                    :key-fn keyword)
-                     :id)
-             {:jsonrpc *version*
-              :method  method
-              :params  params})))))
-
 (deftest decode-test
   (testing "response with result"
-    (is (= (decode (json/write-str {:jsonrpc *version*
+    (is (= (decode (json/write-value-as-string {:jsonrpc *version*
                                     :result  "0x0"
                                     :id      1}))
            {:result "0x0"
             :id     1})))
   (testing "response with error"
-    (is (= (decode (json/write-str {:jsonrpc *version*
+    (is (= (decode (json/write-value-as-string {:jsonrpc *version*
                                     :error   {:code    -32602
                                               :message "Method not found"}
                                     :id      1}))
@@ -70,7 +40,7 @@
 
 (deftest send-test
   (let [id       (uuid)
-        response (json/write-str {:jsonrpc "2.0"
+        response (json/write-value-as-string {:jsonrpc "2.0"
                                   :result  "0x0"
                                   :id      id})
         client   (mock client/Client {:send response

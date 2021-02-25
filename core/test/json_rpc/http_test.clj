@@ -1,6 +1,6 @@
 (ns json-rpc.http-test
   (:require
-   [clojure.data.json :as json]
+   [jsonista.core :as json]
    [clojure.test :refer [deftest is testing]]
    [json-rpc.client :as client]
    [json-rpc.http :refer [clj-http infer-status]])
@@ -36,9 +36,9 @@
                           :method  "eth_blockNumber"
                           :params  ["latest"]
                           :id      1}
-                response (json/read-str (client/send clj-http
+                response (json/read-value (client/send clj-http
                                                       channel
-                                                      (json/write-str request))
+                                                      (json/write-value-as-string request))
                                         :key-fn keyword)]
             (is (= request (:json response)))
             (is (= "application/json" (-> response :headers :content-type)))
